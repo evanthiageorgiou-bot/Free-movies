@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineStream - Movie Finder & Player</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            },
+            dark: {
+              bg: '#0b0f19',
+              card: '#151c2c',
+              border: '#28344d',
+              input: '#0f172a'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome Icons & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #f8fafc;
+    }
+    
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #28344d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b4c6e;
+    }
+
+    .glass-nav {
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    
+    .responsive-iframe-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 Aspect Ratio */
+      overflow: hidden;
+      border-radius: 1rem;
+      background: #000;
+      box-shadow: 0 20px 40px -15px rgba(225, 29, 72, 0.25);
+    }
+
+    .responsive-iframe-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .gradient-glow {
+      box-shadow: 0 0 25px -5px rgba(225, 29, 72, 0.4);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-rose-600 selection:text-white">
+
+  <header class="sticky top-0 z-40 glass-nav border-b border-dark-border/60 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-3 sm:gap-6">
+        
+        <!-- Logo -->
+        <div class="flex items-center gap-2.5 cursor-pointer flex-shrink-0" onclick="resetToHome()">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 via-rose-500 to-amber-500 flex items-center justify-center shadow-lg shadow-rose-600/30">
+            <i class="fa-solid fa-play text-white text-base ml-0.5"></i>
+          </div>
+          <span class="font-extrabold text-xl tracking-tight hidden sm:inline-block text-white">Cine<span class="text-rose-500">Stream</span></span>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative flex-1 max-w-2xl">
+          <form id="searchForm" onsubmit="handleSearchSubmit(event)" class="relative flex items-center">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 text-slate-400"></i>
+            <input 
+              type="text" 
+              id="searchInput"
+              placeholder="Search movies (e.g., Minecraft, Spider-Man, Inception)..." 
+              autocomplete="off"
+              class="w-full bg-dark-input text-gray-100 text-sm rounded-full pl-11 pr-24 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 border border-dark-border/80 transition-all shadow-inner"
+            >
+            <button 
+              type="button"
+              id="clearSearchBtn" 
+              onclick="clearSearch()" 
+              class="hidden absolute right-20 text-slate-400 hover:text-white p-1"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <button 
+              type="submit" 
+              class="absolute right-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition shadow-md shadow-rose-600/30"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+
+        <!-- Direct TMDB ID Launcher -->
+        <button 
+          onclick="openDirectIdPrompt()" 
+          class="flex-shrink-0 text-xs sm:text-sm bg-dark-card hover:bg-dark-border text-gray-200 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 shadow-sm"
+          title="Direct TMDB ID Input"
+        >
+          <i class="fa-solid fa-hashtag text-rose-500 font-bold"></i>
+          <span class="hidden sm:inline font-medium">Direct ID</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- Embedded Player View -->
+    <section id="playerContainer" class="hidden scroll-mt-20">
+      <div class="bg-dark-card border border-dark-border/80 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-6 gradient-glow">
+        
+        <!-- Player Header -->
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-dark-border/60 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1 rounded-full border border-rose-500/20 flex items-center gap-1.5">
+              <i class="fa-solid fa-film"></i>
+              TMDB ID: <span id="playerTmdbId" class="font-mono text-white">---</span>
+            </span>
+            <span id="playerYear" class="text-xs text-slate-400 bg-dark-input px-2.5 py-1 rounded-md border border-dark-border">----</span>
+            <span id="playerRating" class="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md flex items-center gap-1">
+              <i class="fa-solid fa-star text-xs"></i> 0.0
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button 
+              onclick="copyEmbedCode()" 
+              class="text-xs bg-dark-input hover:bg-dark-border text-gray-300 px-3 py-1.5 rounded-lg border border-dark-border transition flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-code"></i> Copy Frame
+            </button>
+            <button 
+              onclick="closePlayer()" 
+              class="text-xs bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-1.5 rounded-lg border border-rose-500/30 transition flex items-center gap-1"
+            >
+              <i class="fa-solid fa-xmark"></i> Close Player
+            </button>
+          </div>
+        </div>
+
+        <!-- Movie Frame Player -->
+        <div class="responsive-iframe-container" id="iframeWrapper"></div>
+
+        <!-- Movie Overview Banner -->
+        <div class="flex flex-col md:flex-row gap-6 pt-2">
+          <img id="playerPoster" src="" alt="Poster" class="w-32 sm:w-40 h-auto rounded-xl shadow-lg border border-dark-border object-cover flex-shrink-0 hidden sm:block">
+          <div class="space-y-3 flex-1">
+            <h1 id="playerTitle" class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Movie Title</h1>
+            <p id="playerOverview" class="text-slate-300 text-sm sm:text-base leading-relaxed">
+              Movie description overview will appear here...
+            </p>
+            <div id="playerGenres" class="flex flex-wrap gap-2 pt-2"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Quick Shortcuts -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-bolt text-rose-500"></i> Quick Sample Movies
+        </h3>
+        <span class="text-xs text-slate-500">Click title to stream</span>
+      </div>
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 text-xs sm:text-sm no-scrollbar">
+        <button onclick="loadMovieById(1083381)" class="whitespace-nowrap bg-dark-card hover:bg-rose-600/20 hover:border-rose-500/50 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-gray-200">
+          <i class="fa-solid fa-play text-rose-500 text-xs"></i> Minecraft Movie (1083381)
+        </button>
+        <button onclick="loadMovieById(1726)" class="whitespace-nowrap bg-dark-card hover:bg-rose-600/20 hover:border-rose-500/50 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-gray-200">
+          <i class="fa-solid fa-play text-rose-500 text-xs"></i> Iron Man (1726)
+        </button>
+        <button onclick="loadMovieById(27205)" class="whitespace-nowrap bg-dark-card hover:bg-rose-600/20 hover:border-rose-500/50 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-gray-200">
+          <i class="fa-solid fa-play text-rose-500 text-xs"></i> Inception (27205)
+        </button>
+        <button onclick="loadMovieById(157336)" class="whitespace-nowrap bg-dark-card hover:bg-rose-600/20 hover:border-rose-500/50 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-gray-200">
+          <i class="fa-solid fa-play text-rose-500 text-xs"></i> Interstellar (157336)
+        </button>
+        <button onclick="loadMovieById(19995)" class="whitespace-nowrap bg-dark-card hover:bg-rose-600/20 hover:border-rose-500/50 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-gray-200">
+          <i class="fa-solid fa-play text-rose-500 text-xs"></i> Avatar (19995)
+        </button>
+        <button onclick="loadMovieById(634649)" class="whitespace-nowrap bg-dark-card hover:bg-rose-600/20 hover:border-rose-500/50 border border-dark-border px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-gray-200">
+          <i class="fa-solid fa-play text-rose-500 text-xs"></i> Spider-Man (634649)
+        </button>
+      </div>
+    </section>
+
+    <!-- Movie Catalog Header & Filters -->
+    <section class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dark-border/60 pb-4">
+        <div>
+          <h2 id="sectionTitle" class="text-xl sm:text-2xl font-bold text-white tracking-tight">Discover Movies</h2>
+          <p id="sectionSubtitle" class="text-xs sm:text-sm text-slate-400 mt-0.5">Explore popular titles and search database</p>
+        </div>
+
+        <!-- Filter Badges -->
+        <div id="categoryTabs" class="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+          <button onclick="switchCategory('all')" id="tab-all" class="cat-btn active-tab text-xs font-semibold px-3 py-1.5 rounded-xl border border-rose-500/50 bg-rose-600 text-white transition whitespace-nowrap">
+            All Movies
+          </button>
+          <button onclick="switchCategory('Action')" id="tab-Action" class="cat-btn text-xs font-semibold px-3 py-1.5 rounded-xl border border-dark-border bg-dark-card text-slate-400 hover:text-white transition whitespace-nowrap">
+            Action
+          </button>
+          <button onclick="switchCategory('Sci-Fi')" id="tab-Sci-Fi" class="cat-btn text-xs font-semibold px-3 py-1.5 rounded-xl border border-dark-border bg-dark-card text-slate-400 hover:text-white transition whitespace-nowrap">
+            Sci-Fi
+          </button>
+          <button onclick="switchCategory('Animation')" id="tab-Animation" class="cat-btn text-xs font-semibold px-3 py-1.5 rounded-xl border border-dark-border bg-dark-card text-slate-400 hover:text-white transition whitespace-nowrap">
+            Animation
+          </button>
+          <button onclick="switchCategory('Family')" id="tab-Family" class="cat-btn text-xs font-semibold px-3 py-1.5 rounded-xl border border-dark-border bg-dark-card text-slate-400 hover:text-white transition whitespace-nowrap">
+            Family
+          </button>
+          <button onclick="switchCategory('Comedy')" id="tab-Comedy" class="cat-btn text-xs font-semibold px-3 py-1.5 rounded-xl border border-dark-border bg-dark-card text-slate-400 hover:text-white transition whitespace-nowrap">
+            Comedy
+          </button>
+        </div>
+      </div>
+
+      <!-- Movie Grid -->
+      <div id="moviesGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"></div>
+    </section>
+
+  </main>
+
+  <!-- Direct TMDB ID Modal -->
+  <div id="idModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-dark-card border border-dark-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-dark-border pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-hashtag text-rose-500"></i> Direct Movie Stream
+        </h3>
+        <button onclick="closeDirectIdModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Input any valid TMDB Movie ID to stream via <code class="bg-dark-input text-rose-400 px-1.5 py-0.5 rounded border border-dark-border">https://cinesrc.st/embed/movie/{tmdb_id}</code>.
+      </p>
+
+      <form onsubmit="handleDirectIdSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">TMDB ID</label>
+          <input 
+            type="number" 
+            id="directIdInput" 
+            placeholder="e.g. 1083381" 
+            required 
+            class="w-full bg-dark-input border border-dark-border text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500"
+          >
+        </div>
+        
+        <div class="flex justify-end gap-2 pt-2">
+          <button 
+            type="button" 
+            onclick="closeDirectIdModal()" 
+            class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-dark-border transition"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="px-5 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition shadow-lg shadow-rose-600/30"
+          >
+            Launch Player
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-dark-card border border-rose-500/40 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-500 flex items-center justify-center">
+        <i class="fa-solid fa-circle-info"></i>
+      </div>
+      <div>
+        <h4 id="toastTitle" class="text-xs font-bold text-gray-200">Notification</h4>
+        <p id="toastMessage" class="text-xs text-slate-400">Action performed successfully.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Built-In Movie Database (Ensures search ALWAYS works offline/online)
+    const MOVIE_DATABASE = [
+      {
+        id: 1083381,
+        title: "A Minecraft Movie",
+        overview: "Four misfits find themselves struggling with ordinary problems when they are suddenly pulled through a mysterious portal into the Overworld: a bizarre, cubic wonderland that thrives on imagination.",
+        release_date: "2025-04-02",
+        vote_average: 7.4,
+        genre: "Family",
+        poster_path: "https://image.tmdb.org/t/p/w500/yA01M16D9cQ3R1E17gH3bH7L0Xg.jpg"
+      },
+      {
+        id: 1726,
+        title: "Iron Man",
+        overview: "After being held captive in an Afghan cave, billionaire engineer Tony Stark creates a unique weaponized suit of armor to fight evil.",
+        release_date: "2008-04-30",
+        vote_average: 7.6,
+        genre: "Action",
+        poster_path: "https://image.tmdb.org/t/p/w500/78291FC23dK3B4j0I7lYpA1gC2x.jpg"
+      },
+      {
+        id: 27205,
+        title: "Inception",
+        overview: "Cobb, a skilled thief who steals corporate secrets through dream-sharing technology, is given the inverse task of planting an idea into the mind of a C.E.O.",
+        release_date: "2010-07-15",
+        vote_average: 8.4,
+        genre: "Sci-Fi",
+        poster_path: "https://image.tmdb.org/t/p/w500/oYuLE1311oA8hA92R3S7p1M9yS4.jpg"
+      },
+      {
+        id: 157336,
+        title: "Interstellar",
+        overview: "The adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel and conquer the vast distances involved in an interstellar voyage.",
+        release_date: "2014-11-05",
+        vote_average: 8.4,
+        genre: "Sci-Fi",
+        poster_path: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
+      },
+      {
+        id: 19995,
+        title: "Avatar",
+        overview: "In the 22nd century, a paraplegic Marine is dispatched to the moon Pandora on a unique mission, but becomes torn between following orders and protecting an alien civilization.",
+        release_date: "2009-12-15",
+        vote_average: 7.6,
+        genre: "Sci-Fi",
+        poster_path: "https://image.tmdb.org/t/p/w500/kC3L34914S11L3K7A935yK9M9.jpg"
+      },
+      {
+        id: 634649,
+        title: "Spider-Man: No Way Home",
+        overview: "Peter Parker is unmasked and no longer able to separate his normal life from the high-stakes of being a super-hero. When he asks for help from Doctor Strange the stakes become even more dangerous.",
+        release_date: "2021-12-15",
+        vote_average: 8.0,
+        genre: "Action",
+        poster_path: "https://image.tmdb.org/t/p/w500/1g0dhY2423oK15321523.jpg"
+      },
+      {
+        id: 502356,
+        title: "The Super Mario Bros. Movie",
+        overview: "While working underground to fix a water main, Brooklyn plumbers Mario and brother Luigi are transported down a mysterious pipe and wander into a magical new world.",
+        release_date: "2023-04-05",
+        vote_average: 7.7,
+        genre: "Animation",
+        poster_path: "https://image.tmdb.org/t/p/w500/qNBAX231s2L5K.jpg"
+      },
+      {
+        id: 550,
+        title: "Fight Club",
+        overview: "A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy.",
+        release_date: "1999-10-15",
+        vote_average: 8.4,
+        genre: "Action",
+        poster_path: "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+      },
+      {
+        id: 299536,
+        title: "Avengers: Infinity War",
+        overview: "As the Avengers and their allies have continued to protect the world from threats too large for any one hero to handle, a new danger has emerged from the cosmic shadows: Thanos.",
+        release_date: "2018-04-25",
+        vote_average: 8.3,
+        genre: "Action",
+        poster_path: "https://image.tmdb.org/t/p/w500/7WsyChLLEz33B.jpg"
+      },
+      {
+        id: 385687,
+        title: "Fast X",
+        overview: "Over many missions and against impossible odds, Dom Toretto and his family have outsmarted, out-nerved and outdriven every foe in their path.",
+        release_date: "2023-05-17",
+        vote_average: 7.1,
+        genre: "Action",
+        poster_path: "https://image.tmdb.org/t/p/w500/fiVW01A1pLgL2.jpg"
+      },
+      {
+        id: 872585,
+        title: "Oppenheimer",
+        overview: "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+        release_date: "2023-07-19",
+        vote_average: 8.1,
+        genre: "Drama",
+        poster_path: "https://image.tmdb.org/t/p/w500/8Gxv83s.jpg"
+      },
+      {
+        id: 354912,
+        title: "Coco",
+        overview: "Despite his family's baffling generations-old ban on music, Miguel dreams of becoming an accomplished musician like his idol, Ernesto de la Cruz.",
+        release_date: "2017-10-27",
+        vote_average: 8.2,
+        genre: "Animation",
+        poster_path: "https://image.tmdb.org/t/p/w500/g2.jpg"
+      }
+    ];
+
+    // Config & App State
+    const EMBED_BASE_URL = 'https://cinesrc.st/embed/movie/';
+    let currentCategory = 'all';
+    let searchDebounceTimer = null;
+
+    // DOM References
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const moviesGrid = document.getElementById('moviesGrid');
+    const playerContainer = document.getElementById('playerContainer');
+
+    // Startup Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      renderMovies(MOVIE_DATABASE);
+      setupSearch();
+    });
+
+    function setupSearch() {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        
+        if (query.length > 0) {
+          clearSearchBtn.classList.remove('hidden');
+        } else {
+          clearSearchBtn.classList.add('hidden');
+        }
+
+        // Real-time debounced search
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+          executeSearch(query);
+        }, 250);
+      });
+    }
+
+    function handleSearchSubmit(e) {
+      e.preventDefault();
+      const query = searchInput.value.trim();
+      executeSearch(query);
+    }
+
+    function executeSearch(query) {
+      if (!query) {
+        document.getElementById('sectionTitle').innerText = 'Discover Movies';
+        document.getElementById('sectionSubtitle').innerText = 'Explore popular titles and search database';
+        filterByCategory(currentCategory);
+        return;
+      }
+
+      document.getElementById('sectionTitle').innerText = `Search Results for "${query}"`;
+      document.getElementById('sectionSubtitle').innerText = 'Matching titles in database';
+
+      const results = MOVIE_DATABASE.filter(movie => {
+        const titleMatch = movie.title.toLowerCase().includes(query.toLowerCase());
+        const overviewMatch = movie.overview.toLowerCase().includes(query.toLowerCase());
+        const idMatch = movie.id.toString() === query;
+        return titleMatch || overviewMatch || idMatch;
+      });
+
+      if (results.length > 0) {
+        renderMovies(results);
+      } else {
+        // Fallback display if specific movie title wasn't in sample catalog
+        moviesGrid.innerHTML = `
+          <div class="col-span-full text-center py-12 space-y-4">
+            <div class="w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto text-2xl">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">No local matches found for "${query}"</h3>
+            <p class="text-xs text-slate-400 max-w-md mx-auto">
+              If you know the exact TMDB ID for "${query}", you can launch it directly using the Direct ID button.
+            </p>
+            <div class="pt-2 flex justify-center gap-3">
+              <button onclick="clearSearch()" class="text-xs bg-dark-card border border-dark-border hover:bg-dark-border text-white px-4 py-2 rounded-xl transition">
+                Clear Search
+              </button>
+              <button onclick="openDirectIdPrompt()" class="text-xs bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl transition shadow-lg shadow-rose-600/30">
+                Launch via TMDB ID
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      clearSearchBtn.classList.add('hidden');
+      document.getElementById('sectionTitle').innerText = 'Discover Movies';
+      document.getElementById('sectionSubtitle').innerText = 'Explore popular titles and search database';
+      filterByCategory(currentCategory);
+    }
+
+    function switchCategory(category) {
+      currentCategory = category;
+      
+      // Update UI active buttons
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.className = "cat-btn text-xs font-semibold px-3 py-1.5 rounded-xl border border-dark-border bg-dark-card text-slate-400 hover:text-white transition whitespace-nowrap";
+      });
+      
+      const activeBtn = document.getElementById(`tab-${category}`);
+      if (activeBtn) {
+        activeBtn.className = "cat-btn active-tab text-xs font-semibold px-3 py-1.5 rounded-xl border border-rose-500/50 bg-rose-600 text-white transition whitespace-nowrap";
+      }
+
+      filterByCategory(category);
+    }
+
+    function filterByCategory(category) {
+      if (category === 'all') {
+        renderMovies(MOVIE_DATABASE);
+      } else {
+        const filtered = MOVIE_DATABASE.filter(m => m.genre === category);
+        renderMovies(filtered);
+      }
+    }
+
+    function renderMovies(list) {
+      moviesGrid.innerHTML = '';
+
+      list.forEach(movie => {
+        const year = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+        const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '7.0';
+        const posterUrl = movie.poster_path || `https://placehold.co/500x750/151c2c/f8fafc?text=${encodeURIComponent(movie.title)}`;
+
+        const card = document.createElement('div');
+        card.className = "group relative bg-dark-card hover:bg-dark-border/50 rounded-2xl overflow-hidden border border-dark-border/80 transition duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer flex flex-col";
+        card.onclick = () => loadMovieById(movie.id, movie);
+
+        card.innerHTML = `
+          <div class="relative overflow-hidden aspect-[2/3]">
+            <img 
+              src="${posterUrl}" 
+              alt="${movie.title}" 
+              class="w-full h-full object-cover transition duration-500 group-hover:scale-105"
+              onerror="this.src='https://placehold.co/500x750/151c2c/94a3b8?text=Movie+Poster'"
+            >
+            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div class="w-12 h-12 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-lg transform scale-75 group-hover:scale-100 transition duration-300">
+                <i class="fa-solid fa-play text-lg ml-0.5"></i>
+              </div>
+            </div>
+            <div class="absolute top-2.5 right-2.5 bg-black/80 backdrop-blur-md px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-amber-400 border border-white/10 flex items-center gap-1 shadow">
+              <i class="fa-solid fa-star text-[10px]"></i> ${rating}
+            </div>
+          </div>
+          <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2">
+            <div>
+              <h4 class="font-bold text-sm text-gray-100 group-hover:text-rose-400 transition line-clamp-1">${movie.title}</h4>
+              <p class="text-[11px] text-slate-400 line-clamp-2 mt-1 leading-snug">${movie.overview}</p>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-dark-border/40">
+              <span class="text-[11px] font-medium text-slate-400">${year}</span>
+              <span class="font-mono text-[10px] text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">ID: ${movie.id}</span>
+            </div>
+          </div>
+        `;
+
+        moviesGrid.appendChild(card);
+      });
+    }
+
+    function loadMovieById(tmdbId, preloadedData = null) {
+      playerContainer.classList.remove('hidden');
+      playerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Build precise iframe with required URL format and attributes
+      const iframeWrapper = document.getElementById('iframeWrapper');
+      iframeWrapper.innerHTML = `
+        <iframe 
+          src="${EMBED_BASE_URL}${tmdbId}" 
+          width="100%" 
+          height="100%" 
+          frameborder="0" 
+          allowfullscreen 
+          allow="autoplay; encrypted-media; picture-in-picture"
+          title="Movie Player Frame"
+        ></iframe>
+      `;
+
+      document.getElementById('playerTmdbId').innerText = tmdbId;
+
+      // Find movie metadata from local DB or preloaded info
+      let movie = preloadedData || MOVIE_DATABASE.find(m => m.id.toString() === tmdbId.toString());
+
+      if (!movie) {
+        movie = {
+          id: tmdbId,
+          title: `Movie Stream #${tmdbId}`,
+          overview: `Custom playback stream requested for TMDB ID ${tmdbId}.`,
+          release_date: 'N/A',
+          vote_average: 7.5,
+          genre: 'Featured'
+        };
+      }
+
+      document.getElementById('playerTitle').innerText = movie.title;
+      document.getElementById('playerOverview').innerText = movie.overview;
+      document.getElementById('playerYear').innerText = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+      document.getElementById('playerRating').innerHTML = `<i class="fa-solid fa-star text-xs"></i> ${(movie.vote_average || 7.0).toFixed(1)}`;
+
+      const posterImg = document.getElementById('playerPoster');
+      if (movie.poster_path) {
+        posterImg.src = movie.poster_path;
+        posterImg.classList.remove('hidden');
+      } else {
+        posterImg.classList.add('hidden');
+      }
+
+      const genresBox = document.getElementById('playerGenres');
+      genresBox.innerHTML = `<span class="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1 rounded-full font-medium">${movie.genre || 'Movie'}</span>`;
+
+      showToast("Player Loaded", `Active stream for TMDB ID: ${tmdbId}`);
+    }
+
+    function closePlayer() {
+      playerContainer.classList.add('hidden');
+      document.getElementById('iframeWrapper').innerHTML = '';
+    }
+
+    function copyEmbedCode() {
+      const tmdbId = document.getElementById('playerTmdbId').innerText;
+      const code = `<iframe src="${EMBED_BASE_URL}${tmdbId}" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>`;
+      
+      const tempInput = document.createElement('textarea');
+      tempInput.value = code;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+
+      showToast("Code Copied!", "Embed code copied to clipboard.");
+    }
+
+    function resetToHome() {
+      closePlayer();
+      clearSearch();
+      switchCategory('all');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openDirectIdPrompt() {
+      document.getElementById('idModal').classList.remove('hidden');
+      document.getElementById('directIdInput').focus();
+    }
+
+    function closeDirectIdModal() {
+      document.getElementById('idModal').classList.add('hidden');
+    }
+
+    function handleDirectIdSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('directIdInput').value.trim();
+      if (id) {
+        closeDirectIdModal();
+        loadMovieById(id);
+      }
+    }
+
+    function showToast(title, message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastTitle').innerText = title;
+      document.getElementById('toastMessage').innerText = message;
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
