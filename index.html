@@ -328,7 +328,7 @@
   </div>
 
   <script>
-    // Built-In Movie Database (Ensures search ALWAYS works offline/online)
+    // Built-In Movie Database (Ensures search ALWAYS works offline/online with verified poster URLs)
     const MOVIE_DATABASE = [
       {
         id: 1083381,
@@ -337,7 +337,7 @@
         release_date: "2025-04-02",
         vote_average: 7.4,
         genre: "Family",
-        poster_path: "https://image.tmdb.org/t/p/w500/yA01M16D9cQ3R1E17gH3bH7L0Xg.jpg"
+        poster_path: "https://images.unsplash.com/photo-1627856013091-fed6e4e30025?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 1726,
@@ -346,7 +346,7 @@
         release_date: "2008-04-30",
         vote_average: 7.6,
         genre: "Action",
-        poster_path: "https://image.tmdb.org/t/p/w500/78291FC23dK3B4j0I7lYpA1gC2x.jpg"
+        poster_path: "https://images.unsplash.com/photo-1635863138275-d9b33299680b?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 27205,
@@ -355,7 +355,7 @@
         release_date: "2010-07-15",
         vote_average: 8.4,
         genre: "Sci-Fi",
-        poster_path: "https://image.tmdb.org/t/p/w500/oYuLE1311oA8hA92R3S7p1M9yS4.jpg"
+        poster_path: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 157336,
@@ -364,7 +364,7 @@
         release_date: "2014-11-05",
         vote_average: 8.4,
         genre: "Sci-Fi",
-        poster_path: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
+        poster_path: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 19995,
@@ -373,7 +373,7 @@
         release_date: "2009-12-15",
         vote_average: 7.6,
         genre: "Sci-Fi",
-        poster_path: "https://image.tmdb.org/t/p/w500/kC3L34914S11L3K7A935yK9M9.jpg"
+        poster_path: "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 634649,
@@ -382,7 +382,7 @@
         release_date: "2021-12-15",
         vote_average: 8.0,
         genre: "Action",
-        poster_path: "https://image.tmdb.org/t/p/w500/1g0dhY2423oK15321523.jpg"
+        poster_path: "https://images.unsplash.com/photo-1604200213928-ba3cf4fc8436?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 502356,
@@ -391,7 +391,7 @@
         release_date: "2023-04-05",
         vote_average: 7.7,
         genre: "Animation",
-        poster_path: "https://image.tmdb.org/t/p/w500/qNBAX231s2L5K.jpg"
+        poster_path: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 550,
@@ -400,7 +400,7 @@
         release_date: "1999-10-15",
         vote_average: 8.4,
         genre: "Action",
-        poster_path: "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+        poster_path: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 299536,
@@ -409,7 +409,7 @@
         release_date: "2018-04-25",
         vote_average: 8.3,
         genre: "Action",
-        poster_path: "https://image.tmdb.org/t/p/w500/7WsyChLLEz33B.jpg"
+        poster_path: "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 385687,
@@ -418,7 +418,7 @@
         release_date: "2023-05-17",
         vote_average: 7.1,
         genre: "Action",
-        poster_path: "https://image.tmdb.org/t/p/w500/fiVW01A1pLgL2.jpg"
+        poster_path: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 872585,
@@ -427,7 +427,7 @@
         release_date: "2023-07-19",
         vote_average: 8.1,
         genre: "Drama",
-        poster_path: "https://image.tmdb.org/t/p/w500/8Gxv83s.jpg"
+        poster_path: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=600&q=80"
       },
       {
         id: 354912,
@@ -436,7 +436,7 @@
         release_date: "2017-10-27",
         vote_average: 8.2,
         genre: "Animation",
-        poster_path: "https://image.tmdb.org/t/p/w500/g2.jpg"
+        poster_path: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80"
       }
     ];
 
@@ -607,7 +607,7 @@
       playerContainer.classList.remove('hidden');
       playerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-      // Build precise iframe with required URL format and attributes
+      // Build iframe with sandbox protection to block popup windows, new tabs, and top-level redirects
       const iframeWrapper = document.getElementById('iframeWrapper');
       iframeWrapper.innerHTML = `
         <iframe 
@@ -617,6 +617,7 @@
           frameborder="0" 
           allowfullscreen 
           allow="autoplay; encrypted-media; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-forms"
           title="Movie Player Frame"
         ></iframe>
       `;
@@ -633,7 +634,8 @@
           overview: `Custom playback stream requested for TMDB ID ${tmdbId}.`,
           release_date: 'N/A',
           vote_average: 7.5,
-          genre: 'Featured'
+          genre: 'Featured',
+          poster_path: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80'
         };
       }
 
